@@ -3,7 +3,7 @@ module SpatialFileIO
 using LasIO, LazIO, DelimitedFiles, VectorizedRoutines
 
 include("FilesIn.jl")
-include("FilesOut.jl")
+# include("FilesOut.jl")
 
 export
     extension,
