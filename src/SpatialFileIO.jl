@@ -1,6 +1,6 @@
 module SpatialFileIO
 
-using LasIO, LazIO, DelimitedFiles, VectorizedRoutines
+# using LasIO, LazIO, DelimitedFiles, VectorizedRoutines
 
 include("FilesIn.jl")
 # include("FilesOut.jl")
