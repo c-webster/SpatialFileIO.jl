@@ -9,6 +9,7 @@ export
     extension,
     readlas,
     importdtm,
-    read_ascii
+    read_ascii,
+    read_ascii_header
 
 end

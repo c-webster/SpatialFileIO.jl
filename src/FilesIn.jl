@@ -63,7 +63,7 @@ end
 
 
 
-function read_ascii(fname::String,delete_rows=true::Bool)
+function read_ascii(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
 
         f = open(fname)
         ncols     = parse(Int64,split(readline(f))[2])
@@ -77,22 +77,41 @@ function read_ascii(fname::String,delete_rows=true::Bool)
         dat = readdlm(fname,skipstart=6)
         replace!(dat, -9999=>NaN)
 
-        # GC.gc()
         xdat = collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2;
         ydat = collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2;
         tgrid = Matlab.meshgrid(xdat,ydat)
 
-        dat_x = vec(tgrid[1]);
-        dat_y = vec(tgrid[2]);
-        dat_z = vec(reverse(dat,dims=1));
+        if vectorize
+            dat_x = vec(tgrid[1]);
+            dat_y = vec(tgrid[2]);
+            dat_z = vec(reverse(dat,dims=1));
 
-        if delete_rows
-            rows = findall(isnan,dat_z)
-            deleteat!(dat_x,rows)
-            deleteat!(dat_y,rows)
-            deleteat!(dat_z,rows)
+            if delete_rows
+                rows = findall(isnan,dat_z)
+                deleteat!(dat_x,rows)
+                deleteat!(dat_y,rows)
+                deleteat!(dat_z,rows)
+            end
+
+            return dat_x, dat_y, dat_z, cellsize
+
+        else
+            return tgrid[1], tgrid[2], dat
         end
 
-    return dat_x, dat_y, dat_z, cellsize
+end
+
+function read_ascii_header(fname::String)
+
+    f = open(fname)
+    ncols     = parse(Int64,split(readline(f))[2])
+    nrows     = parse(Int64,split(readline(f))[2])
+    xllcorner = parse(Float64,split(readline(f))[2])
+    yllcorner = parse(Float64,split(readline(f))[2])
+    cellsize  = parse(Float64,split(readline(f))[2])
+    nodatval  = parse(Float64,split(readline(f))[2])
+    close(f)
+
+    return ncols, nrows, xllcorner, yllcorner, cellsize, nodatval
 
 end
