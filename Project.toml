@@ -1,7 +1,7 @@
 name = "SpatialFileIO"
 uuid = "ab380219-86f4-46ea-9ab2-f0efd05bc343"
 authors = ["Clare <clare.s.webster@gmail.com> and contributors"]
-version = "0.1.0"
+version = "0.5.0"
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
