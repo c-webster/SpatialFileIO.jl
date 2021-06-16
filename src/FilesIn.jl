@@ -65,6 +65,9 @@ end
 
 function read_ascii(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
 
+# delete_rows removes all nan values
+# vectorize creates vectors, not grids from the x,y,z data
+
         f = open(fname)
         ncols     = parse(Int64,split(readline(f))[2])
         nrows     = parse(Int64,split(readline(f))[2])
