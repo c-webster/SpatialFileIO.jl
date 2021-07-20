@@ -1,6 +1,7 @@
 extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
 
 function readlas(infile::String)
+
     if extension(infile) == ".laz"
         header, dsmdat = LazIO.load(infile)
     elseif extension(infile) == ".las"
@@ -13,6 +14,7 @@ function readlas(infile::String)
         dsm_y = fill(NaN,size(dsmdat))
         dsm_z = fill(NaN,size(dsmdat))
         dsm_c = fill(NaN,size(dsmdat))
+
         for dx in eachindex(dsmdat)
             dsm_c[dx] = trunc(Int,float(classification(dsmdat[dx])))
             if dsm_c[dx] == 2
@@ -23,6 +25,7 @@ function readlas(infile::String)
                 dsm_z[dx] = zcoord(dsmdat[dx],header)
             end
         end
+
         rows = findall(isnan,dsm_x)
         deleteat!(dsm_x,rows)
         deleteat!(dsm_y,rows)
@@ -34,7 +37,9 @@ end
 
 
 function importdtm(dtmf::String,tilt::Bool)
+
     if tilt
+
         file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
         dtm_x = dtmdat["x"]
         dtm_y = dtmdat["y"]
@@ -42,9 +47,13 @@ function importdtm(dtmf::String,tilt::Bool)
         dtm_s = dtmdat["s"]
         dtm_a = dtmdat["a"]
         dtm_cellsize = dtmdat["cellsize"]
+
         return dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize
+
     else
+
         if extension(dtmf) == ".mat"
+
             file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
             dtm_x = vec(dtmdat["x"])
             dtm_y = vec(dtmdat["y"])
@@ -54,84 +63,64 @@ function importdtm(dtmf::String,tilt::Bool)
             deleteat!(dtm_x,rows)
             deleteat!(dtm_y,rows)
             deleteat!(dtm_z,rows)
+
         elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt"
+
                 dtm_x, dtm_y, dtm_z, dtm_cellsize = read_ascii(dtmf,true)
+
         end
+
     return dtm_x, dtm_y, dtm_z, dtm_cellsize
+
     end
+
 end
 
+"""
+Read gridded spatial data in .tif or .asc format.
+Will also take a file with .txt extention if it is in the same format as an .asc file
 
-function read_ascii(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
+Returns x,y,z and cellsize data for grid either as 1D or 2D arrays.
 
-# delete_rows removes all nan values
-# vectorize creates vectors, not grids from the x,y,z data
+`read_griddata(fname,delete_rows,vectorize)`
 
+# Arguments
+- fname::String : full filepath and name of file to be read
+- vectorize::Bool : true=return x,y,z data as three single column vectors; false=return x,y,z data as 2D matrices
+    default=true
+- delete_rows::Bool : to delete rows with NaN values - requires data to be vectorized.
+    default=true
+    if false, function does not return cellsize.
+"""
+function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool)
+
+    if extension(fname) == ".asc" || extension(fname) == ".txt"
         f = open(fname)
-        ncols     = parse(Int64,split(readline(f))[2])
-        nrows     = parse(Int64,split(readline(f))[2])
-        xllcorner = parse(Float64,split(readline(f))[2])
-        yllcorner = parse(Float64,split(readline(f))[2])
-        cellsize  = parse(Float64,split(readline(f))[2])
-        nodatval  = parse(Float64,split(readline(f))[2])
+            ncols     = parse(Int64,split(readline(f))[2])
+            nrows     = parse(Int64,split(readline(f))[2])
+            xllcorner = parse(Float64,split(readline(f))[2])
+            yllcorner = parse(Float64,split(readline(f))[2])
+            cellsize  = parse(Float64,split(readline(f))[2])
+            nodatval  = parse(Float64,split(readline(f))[2])
         close(f)
 
         dat = readdlm(fname,skipstart=6)
-        replace!(dat, nodatval=>NaN)
 
-        tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
-                                collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
+    elseif extension(fname) == ".tif"
 
-        if vectorize
-            dat_x = vec(tgrid[1])
-            dat_y = vec(tgrid[2])
-            dat_z = vec(reverse(dat,dims=1))
+        dataset = ArchGDAL.read(fname)
 
-            if delete_rows
-                rows = findall(isnan,dat_z)
-                deleteat!(dat_x,rows)
-                deleteat!(dat_y,rows)
-                deleteat!(dat_z,rows)
-            end
+        gt = ArchGDAL.getgeotransform(dataset)
+        xulcorner = gt[1]
+        cellsize  = gt[2]
+        yulcorner = gt[4]
+        nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
+        ncols     = ArchGDAL.width(dataset)
+        nrows     = ArchGDAL.height(dataset)
 
-            return dat_x, dat_y, dat_z, cellsize
+        dat = ArchGDAL.read(ArchGDAL.getband(dataset,1))
 
-        else
-            return tgrid[1], tgrid[2], dat
-        end
-
-end
-
-
-function read_ascii_header(fname::String)
-
-    f = open(fname)
-    ncols     = parse(Int64,split(readline(f))[2])
-    nrows     = parse(Int64,split(readline(f))[2])
-    xllcorner = parse(Float64,split(readline(f))[2])
-    yllcorner = parse(Float64,split(readline(f))[2])
-    cellsize  = parse(Float64,split(readline(f))[2])
-    nodatval  = parse(Float64,split(readline(f))[2])
-    close(f)
-
-    return ncols, nrows, xllcorner, yllcorner, cellsize, nodatval
-
-end
-
-
-function read_geotiff(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
-
-    dataset = ArchGDAL.read(fname)
-
-    dat = ArchGDAL.read(ArchGDAL.getband(dataset,1))
-
-    gt = ArchGDAL.getgeotransform(dataset)
-    xulcorner = gt[1]
-    cellsize  = gt[2]
-    yulcorner = gt[4]
-    nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
-    ncols     = ArchGDAL.width(dataset)
-    nrows     = ArchGDAL.height(dataset)
+    end
 
     replace!(dat, nodatval=>NaN)
 
@@ -155,5 +144,21 @@ function read_geotiff(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
     else
         return tgrid[1], tgrid[2], dat
     end
+
+end
+
+
+function read_ascii_header(fname::String)
+
+    f = open(fname)
+    ncols     = parse(Int64,split(readline(f))[2])
+    nrows     = parse(Int64,split(readline(f))[2])
+    xllcorner = parse(Float64,split(readline(f))[2])
+    yllcorner = parse(Float64,split(readline(f))[2])
+    cellsize  = parse(Float64,split(readline(f))[2])
+    nodatval  = parse(Float64,split(readline(f))[2])
+    close(f)
+
+    return ncols, nrows, xllcorner, yllcorner, cellsize, nodatval
 
 end
