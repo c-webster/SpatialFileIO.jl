@@ -62,7 +62,6 @@ function importdtm(dtmf::String,tilt::Bool)
 end
 
 
-
 function read_ascii(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
 
 # delete_rows removes all nan values
@@ -78,16 +77,15 @@ function read_ascii(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
         close(f)
 
         dat = readdlm(fname,skipstart=6)
-        replace!(dat, -9999=>NaN)
+        replace!(dat, nodatval=>NaN)
 
-        xdat = collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2;
-        ydat = collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2;
-        tgrid = Matlab.meshgrid(xdat,ydat)
+        tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
+                                collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
 
         if vectorize
-            dat_x = vec(tgrid[1]);
-            dat_y = vec(tgrid[2]);
-            dat_z = vec(reverse(dat,dims=1));
+            dat_x = vec(tgrid[1])
+            dat_y = vec(tgrid[2])
+            dat_z = vec(reverse(dat,dims=1))
 
             if delete_rows
                 rows = findall(isnan,dat_z)
@@ -104,6 +102,7 @@ function read_ascii(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
 
 end
 
+
 function read_ascii_header(fname::String)
 
     f = open(fname)
@@ -116,5 +115,45 @@ function read_ascii_header(fname::String)
     close(f)
 
     return ncols, nrows, xllcorner, yllcorner, cellsize, nodatval
+
+end
+
+
+function read_geotiff(fname::String,delete_rows=true::Bool,vectorize=true::Bool)
+
+    dataset = ArchGDAL.read(fname)
+
+    dat = ArchGDAL.read(ArchGDAL.getband(dataset,1))
+
+    gt = ArchGDAL.getgeotransform(dataset)
+    xulcorner = gt[1]
+    cellsize  = gt[2]
+    yulcorner = gt[4]
+    nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
+    ncols     = ArchGDAL.width(dataset)
+    nrows     = ArchGDAL.height(dataset)
+
+    replace!(dat, nodatval=>NaN)
+
+    tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
+                            collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
+
+    if vectorize
+        dat_x = vec(tgrid[1]);
+        dat_y = vec(tgrid[2]);
+        dat_z = vec(Float64.(dat))
+
+        if delete_rows
+            rows = findall(isnan,dat_z)
+            deleteat!(dat_x,rows)
+            deleteat!(dat_y,rows)
+            deleteat!(dat_z,rows)
+        end
+
+        return dat_x, dat_y, dat_z, cellsize
+
+    else
+        return tgrid[1], tgrid[2], dat
+    end
 
 end
