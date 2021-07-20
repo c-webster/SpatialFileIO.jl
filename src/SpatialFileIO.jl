@@ -10,7 +10,7 @@ export
     readlas,
     importdtm,
     read_griddata,
-    read_ascii_header,
+    read_griddata_header,
     write_ascii
 
 end

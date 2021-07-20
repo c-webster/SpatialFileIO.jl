@@ -150,17 +150,39 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
 
 end
 
+"""
+Reads header/meta information for gridded spatial data
 
-function read_ascii_header(fname::String)
+# Usage
+`ncols, nrows, xllcorner, yllcorner, cellsize, nodatval = read_griddata_header(fname::String)`
 
-    f = open(fname)
-    ncols     = parse(Int64,split(readline(f))[2])
-    nrows     = parse(Int64,split(readline(f))[2])
-    xllcorner = parse(Float64,split(readline(f))[2])
-    yllcorner = parse(Float64,split(readline(f))[2])
-    cellsize  = parse(Float64,split(readline(f))[2])
-    nodatval  = parse(Float64,split(readline(f))[2])
-    close(f)
+If fname is .asc or .txt format, function assumes coordinates are of lower left corner of extent 
+"""
+function read_griddata_header(fname::String)
+
+    if extension(fname) == ".asc" || extension(fname) == ".txt"
+        f = open(fname)
+            ncols     = parse(Int64,split(readline(f))[2])
+            nrows     = parse(Int64,split(readline(f))[2])
+            xllcorner = parse(Float64,split(readline(f))[2])
+            yllcorner = parse(Float64,split(readline(f))[2])
+            cellsize  = parse(Float64,split(readline(f))[2])
+            nodatval  = parse(Float64,split(readline(f))[2])
+        close(f)
+
+    elseif extension(fname) == ".tif"
+
+        dataset = ArchGDAL.read(fname)
+
+        gt = ArchGDAL.getgeotransform(dataset)
+        xllcorner = gt[1] # also xulcorner
+        cellsize  = gt[2]
+        nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
+        ncols     = ArchGDAL.width(dataset)
+        nrows     = ArchGDAL.height(dataset)
+        yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
+
+    end
 
     return ncols, nrows, xllcorner, yllcorner, cellsize, nodatval
 
