@@ -106,6 +106,9 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
 
         dat = readdlm(fname,skipstart=6)
 
+        tgrid = Matlab.meshgrid(collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2,
+                                collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2)
+
     elseif extension(fname) == ".tif"
 
         dataset = ArchGDAL.read(fname)
@@ -120,12 +123,12 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
 
         dat = ArchGDAL.read(ArchGDAL.getband(dataset,1))
 
+        tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
+                                collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
+
     end
 
     replace!(dat, nodatval=>NaN)
-
-    tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
-                            collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
 
     if vectorize
         dat_x = vec(tgrid[1]);
