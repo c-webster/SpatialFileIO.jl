@@ -121,7 +121,7 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
         ncols     = ArchGDAL.width(dataset)
         nrows     = ArchGDAL.height(dataset)
 
-        dat = transpose(ArchGDAL.read(ArchGDAL.getband(dataset,1)))
+        dat = Float64.(transpose(ArchGDAL.read(ArchGDAL.getband(dataset,1))))
 
         tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
                                 collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
