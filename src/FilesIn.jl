@@ -121,7 +121,7 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
         ncols     = ArchGDAL.width(dataset)
         nrows     = ArchGDAL.height(dataset)
 
-        dat = ArchGDAL.read(ArchGDAL.getband(dataset,1))
+        dat = transpose(ArchGDAL.read(ArchGDAL.getband(dataset,1)))
 
         tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
                                 collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
@@ -133,7 +133,7 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
     if vectorize
         dat_x = vec(tgrid[1]);
         dat_y = vec(tgrid[2]);
-        dat_z = vec(Float64.(dat))
+        dat_z = vec(reverse(dat,dims=1))
 
         if delete_rows
             rows = findall(isnan,dat_z)
