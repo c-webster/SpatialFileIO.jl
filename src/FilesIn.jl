@@ -66,7 +66,7 @@ function importdtm(dtmf::String,tilt::Bool)
 
         elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt"
 
-                dtm_x, dtm_y, dtm_z, dtm_cellsize = read_ascii(dtmf,true)
+                dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata(dtmf,true,true)
 
         end
 
@@ -156,7 +156,7 @@ Reads header/meta information for gridded spatial data
 # Usage
 `ncols, nrows, xllcorner, yllcorner, cellsize, nodatval = read_griddata_header(fname::String)`
 
-If fname is .asc or .txt format, function assumes coordinates are of lower left corner of extent 
+If fname is .asc or .txt format, function assumes coordinates are of lower left corner of extent
 """
 function read_griddata_header(fname::String)
 
