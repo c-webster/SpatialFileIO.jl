@@ -64,7 +64,7 @@ function importdtm(dtmf::String,tilt::Bool)
             deleteat!(dtm_y,rows)
             deleteat!(dtm_z,rows)
 
-        elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt"
+        elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt" ||  extension(dtmf) == ".tif"
 
                 dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata(dtmf,true,true)
 
