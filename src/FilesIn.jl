@@ -204,7 +204,7 @@ Note, if vectorize=false, delete_rows cannot be reached.
 limits should be matrix of [xmin xmax ymin ymax]
 
 """
-function read_griddata_window(fname::String,limits::Matrix{Int64},
+function read_griddata_window(fname::String,limits,
                                 vectorize=true::Bool,delete_rows=true::Bool)
 
     dataset = ArchGDAL.read(fname)
