@@ -11,6 +11,7 @@ export
     importdtm,
     read_griddata,
     read_griddata_header,
+    read_griddata_window,
     write_ascii
 
 end

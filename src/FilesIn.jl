@@ -187,3 +187,65 @@ function read_griddata_header(fname::String)
     return ncols, nrows, xllcorner, yllcorner, cellsize, nodatval
 
 end
+
+
+"""
+Imports data window from geotiff
+
+# Usage
+`dat_x, dat_y, dat_z = read_griddata_window(fname::String,limits::Array{Float64,1},
+                                vectorize=true::Bool,delete_rows=true::Bool))`
+
+if vectorize=true, values are returned as 1-D arrays
+if delete_rows=true, all NaN values are deleted
+
+Note, if vectorize=false, delete_rows cannot be reached.
+
+limits should be matrix of [xmin xmax ymin ymax]
+
+"""
+function read_griddata_window(fname::String,limits,
+                                vectorize=true::Bool,delete_rows=true::Bool)
+
+    dataset = ArchGDAL.read(fname)
+
+    gt = ArchGDAL.getgeotransform(dataset)
+    xllcorner = gt[1] # also xulcorner
+    cellsize  = gt[2]
+    nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
+    ncols     = ArchGDAL.width(dataset)
+    nrows     = ArchGDAL.height(dataset)
+    yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
+
+    xoffset = ((limits[1] - xllcorner)/cellsize)
+    yoffset = nrows - ((limits[4] - yllcorner)/cellsize)
+
+    xsize = (ceil(limits[2] - limits[1])/cellsize)
+    ysize = (ceil(limits[4] - limits[3])/cellsize)
+
+    indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset),Int(xsize), Int(ysize))))
+
+    tgrid = Matlab.meshgrid(collect(limits[1]:cellsize:limits[2]-cellsize) .+ cellsize/2,
+                            collect(limits[3]:cellsize:limits[4]-cellsize) .+ cellsize/2)
+
+    replace!(indat, nodatval=>NaN)
+
+    if vectorize
+        dat_x = vec(tgrid[1]);
+        dat_y = vec(tgrid[2]);
+        dat_z = vec(reverse(indat,dims=1))
+
+        if delete_rows
+            rows = findall(isnan,dat_z)
+            deleteat!(dat_x,rows)
+            deleteat!(dat_y,rows)
+            deleteat!(dat_z,rows)
+        end
+
+        return dat_x, dat_y, dat_z
+
+    else
+        return tgrid[1], tgrid[2], dat
+    end
+
+end
