@@ -217,19 +217,27 @@ function read_griddata_window(fname::String,limits,
     nrows     = ArchGDAL.height(dataset)
     yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
 
-    newlims = hcat(floor(limits[1]/cellsize)*cellsize,ceil(limits[2]/cellsize)*cellsize,
-                    floor(limits[3]/cellsize)*cellsize,ceil(limits[4]/cellsize)*cellsize)
+    dimsx = xllcorner:cellsize:limits[1]
+    dimsy = gt[4]:-cellsize:limits[4]
 
-    xoffset = ((newlims[1] - xllcorner)/cellsize)
-    yoffset = (nrows - ((newlims[4] - yllcorner)/cellsize))
+    xoffset = size(dimsx)[1]-1
+    yoffset = size(dimsy)[1]-1
 
-    xsize = ((newlims[2] - newlims[1])/cellsize)
-    ysize = ((newlims[4] - newlims[3])/cellsize)
+    xmin  = dimsx[end]
+    xmax  = (xmin:cellsize:limits[2])[end]
+    if xmax - limits[2] !== 0.0; xmax += cellsize; end
 
-    indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset),Int(xsize), Int(ysize))))
+    ymin = (yllcorner:cellsize:limits[3])[end]
+    ymax = (ymin:cellsize:limits[4])[end]
+    if ymax - limits[4] !== 0.0; ymax += cellsize; end
 
-    tgrid = Matlab.meshgrid(collect(limits[1]:cellsize:limits[2]-cellsize) .+ cellsize/2,
-                            collect(limits[3]:cellsize:limits[4]-cellsize) .+ cellsize/2)
+    xsize = (xmax - xmin)/cellsize
+    ysize = (ymax - ymin)/cellsize
+
+    indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset), Int(xsize), Int(ysize))))
+
+    tgrid = Matlab.meshgrid(collect(xmin:cellsize:xmax-cellsize) .+ cellsize/2,
+                            collect(ymin:cellsize:ymax-cellsize) .+ cellsize/2)
 
     replace!(indat, nodatval=>NaN)
 
