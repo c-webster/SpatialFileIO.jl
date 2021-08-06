@@ -36,7 +36,7 @@ function readlas(infile::String)
 end
 
 
-function importdtm(dtmf::String,tilt::Bool)
+function importdtm(dtmf::String,tilt::Bool,limits::Any=nothing)
 
     if tilt
 
@@ -145,7 +145,7 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
         return dat_x, dat_y, dat_z, cellsize
 
     else
-        return tgrid[1], tgrid[2], dat
+        return tgrid[1], tgrid[2], dat, cellsize
     end
 
 end
@@ -217,11 +217,14 @@ function read_griddata_window(fname::String,limits,
     nrows     = ArchGDAL.height(dataset)
     yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
 
-    xoffset = ((limits[1] - xllcorner)/cellsize)
-    yoffset = nrows - ((limits[4] - yllcorner)/cellsize)
+    newlims = hcat(floor(limits[1]/cellsize)*cellsize,ceil(limits[2]/cellsize)*cellsize,
+                    floor(limits[3]/cellsize)*cellsize,ceil(limits[4]/cellsize)*cellsize)
 
-    xsize = (ceil(limits[2] - limits[1])/cellsize)
-    ysize = (ceil(limits[4] - limits[3])/cellsize)
+    xoffset = ((newlims[1] - xllcorner)/cellsize)
+    yoffset = (nrows - ((newlims[4] - yllcorner)/cellsize))
+
+    xsize = ((newlims[2] - newlims[1])/cellsize)
+    ysize = ((newlims[4] - newlims[3])/cellsize)
 
     indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset),Int(xsize), Int(ysize))))
 
