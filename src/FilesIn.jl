@@ -245,10 +245,10 @@ function read_griddata_window(fname::String,limits,
             deleteat!(dat_z,rows)
         end
 
-        return dat_x, dat_y, dat_z
+        return dat_x, dat_y, dat_z, cellsize
 
     else
-        return tgrid[1], tgrid[2], dat
+        return tgrid[1], tgrid[2], dat, cellsize
     end
 
 end
