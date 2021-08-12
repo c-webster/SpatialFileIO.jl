@@ -217,12 +217,28 @@ function read_griddata_window(fname::String,limits,
     nrows     = ArchGDAL.height(dataset)
     yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
 
+    # check bounds aren't east or south of data
+    if limits[1] .< xllcorner
+        limits[1] = xllcorner
+    end
+
+    if limits[3] .< yllcorner
+        limits[3] = yllcorner
+    end
+
+    # cell boundaries
     dimsx = xllcorner:cellsize:limits[1]
     dimsy = gt[4]:-cellsize:limits[4]
 
+    # size of window in cells
     xoffset = size(dimsx)[1]-1
     yoffset = size(dimsy)[1]-1
 
+    # correct for negative offset (although should be negated by the above check bounds step)
+    if xoffset < 0; xoffset = 0; end
+    if yoffset < 0; yoffset = 0; end
+
+    # get size of window in cells
     xmin  = dimsx[end]
     xmax  = (xmin:cellsize:limits[2])[end]
     if xmax - limits[2] !== 0.0; xmax += cellsize; end
@@ -233,6 +249,10 @@ function read_griddata_window(fname::String,limits,
 
     xsize = (xmax - xmin)/cellsize
     ysize = (ymax - ymin)/cellsize
+
+    # check bounds aren't west or north of data
+    if xsize > ncols; xsize = ncols; end
+    if ysize > nrows; ysize = nrows; end
 
     indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset), Int(xsize), Int(ysize))))
 
