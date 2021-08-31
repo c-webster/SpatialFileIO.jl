@@ -217,66 +217,76 @@ function read_griddata_window(fname::String,limits,
     nrows     = ArchGDAL.height(dataset)
     yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
 
-    # check bounds aren't east or south of data
-    if limits[1] .< xllcorner
-        limits[1] = xllcorner
-    end
+    xurcorner = xllcorner+(cellsize*ncols)
+    yurcorner = gt[4]
 
-    if limits[3] .< yllcorner
-        limits[3] = yllcorner
-    end
+    if ((xllcorner .< limits[1] .< xurcorner) || (xllcorner .< limits[2] .< xurcorner)) &&
+            ((yllcorner .< limits[3] .< yurcorner) || (yllcorner .< limits[4] .< yurcorner))
 
-    # cell boundaries
-    dimsx = xllcorner:cellsize:limits[1]
-    dimsy = gt[4]:-cellsize:limits[4]
-
-    # size of window in cells
-    xoffset = size(dimsx)[1]-1
-    yoffset = size(dimsy)[1]-1
-
-    # correct for negative offset (although should be negated by the above check bounds step)
-    if xoffset < 0; xoffset = 0; end
-    if yoffset < 0; yoffset = 0; end
-
-    # get size of window in cells
-    xmin  = dimsx[end]
-    xmax  = (xmin:cellsize:limits[2])[end]
-    if xmax - limits[2] !== 0.0; xmax += cellsize; end
-
-    ymin = (yllcorner:cellsize:limits[3])[end]
-    ymax = (ymin:cellsize:limits[4])[end]
-    if ymax - limits[4] !== 0.0; ymax += cellsize; end
-
-    xsize = (xmax - xmin)/cellsize
-    ysize = (ymax - ymin)/cellsize
-
-    # check bounds aren't west or north of data
-    if xsize > ncols; xsize = ncols; end
-    if ysize > nrows; ysize = nrows; end
-
-    indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset), Int(xsize), Int(ysize))))
-
-    tgrid = Matlab.meshgrid(collect(xmin:cellsize:xmax-cellsize) .+ cellsize/2,
-                            collect(ymin:cellsize:ymax-cellsize) .+ cellsize/2)
-
-    replace!(indat, nodatval=>NaN)
-
-    if vectorize
-        dat_x = vec(tgrid[1]);
-        dat_y = vec(tgrid[2]);
-        dat_z = vec(reverse(indat,dims=1))
-
-        if delete_rows
-            rows = findall(isnan,dat_z)
-            deleteat!(dat_x,rows)
-            deleteat!(dat_y,rows)
-            deleteat!(dat_z,rows)
+        # check bounds aren't east or south of data
+        if limits[1] .< xllcorner
+            limits[1] = xllcorner
         end
 
-        return dat_x, dat_y, dat_z, cellsize
+        if limits[3] .< yllcorner
+            limits[3] = yllcorner
+        end
+
+        # cell boundaries
+        dimsx = xllcorner:cellsize:limits[1]
+        dimsy = gt[4]:-cellsize:limits[4]
+
+        # size of window in cells
+        xoffset = size(dimsx)[1]-1
+        yoffset = size(dimsy)[1]-1
+
+        # correct for negative offset (although should be negated by the above check bounds step)
+        if xoffset < 0; xoffset = 0; end
+        if yoffset < 0; yoffset = 0; end
+
+        # get size of window in cells
+        xmin  = dimsx[end]
+        xmax  = (xmin:cellsize:limits[2])[end]
+        if xmax - limits[2] !== 0.0; xmax += cellsize; end
+
+        ymin = (yllcorner:cellsize:limits[3])[end]
+        ymax = (ymin:cellsize:limits[4])[end]
+        if ymax - limits[4] !== 0.0; ymax += cellsize; end
+
+        xsize = (xmax - xmin)/cellsize
+        ysize = (ymax - ymin)/cellsize
+
+        # check bounds aren't west or north of data
+        if xsize > ncols; xsize = ncols; end
+        if ysize > nrows; ysize = nrows; end
+
+        indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset), Int(xsize), Int(ysize))))
+
+        tgrid = Matlab.meshgrid(collect(xmin:cellsize:xmax-cellsize) .+ cellsize/2,
+                                collect(ymin:cellsize:ymax-cellsize) .+ cellsize/2)
+
+        replace!(indat, nodatval=>NaN)
+
+        if vectorize
+            dat_x = vec(tgrid[1]);
+            dat_y = vec(tgrid[2]);
+            dat_z = vec(reverse(indat,dims=1))
+
+            if delete_rows
+                rows = findall(isnan,dat_z)
+                deleteat!(dat_x,rows)
+                deleteat!(dat_y,rows)
+                deleteat!(dat_z,rows)
+            end
+
+            return dat_x, dat_y, dat_z, cellsize
+
+        else
+            return tgrid[1], tgrid[2], dat, cellsize
+        end
 
     else
-        return tgrid[1], tgrid[2], dat, cellsize
+        error("Requested window out of bounds of dataset")
     end
 
 end
