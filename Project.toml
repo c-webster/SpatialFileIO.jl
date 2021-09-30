@@ -8,13 +8,11 @@ ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 LasIO = "570499db-eae3-5eb6-bdd5-a5326f375e68"
 LazIO = "c3605908-9f0f-11e8-0a72-0d361c15a277"
-VectorizedRoutines = "0e69188a-a5d4-5622-b4e4-a72373136fc5"
 
 [compat]
 ArchGDAL = "0.7.2"
 LasIO = "0.3.7"
 LazIO = "0.3.3"
-VectorizedRoutines = "0.1.0"
 julia = "1"
 
 [extras]
