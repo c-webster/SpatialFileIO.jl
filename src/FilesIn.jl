@@ -81,6 +81,7 @@ Read gridded spatial data in .tif or .asc format.
 Will also take a file with .txt extention if it is in the same format as an .asc file
 
 Returns x,y,z and cellsize data for grid either as 1D or 2D arrays.
+x,y values are the centre of the grid cell
 
 `read_griddata(fname,delete_rows,vectorize)`
 
@@ -106,8 +107,8 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
 
         dat = readdlm(fname,skipstart=6)
 
-        tgrid = Matlab.meshgrid(collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2,
-                                collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2)
+        tgrid = (((xllcorner:cellsize:(xllcorner+cellsize*(ncols-1)))' .* ones(nrows)) .+ cellsize/2),
+                        ((ones(ncols)' .* (yllcorner:cellsize:(yllcorner+cellsize*(nrows-1)))) .+ cellsize/2)
 
     elseif extension(fname) == ".tif"
 
@@ -123,8 +124,8 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
 
         dat = Float64.(transpose(ArchGDAL.read(ArchGDAL.getband(dataset,1))))
 
-        tgrid = Matlab.meshgrid(collect(xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize)).+cellsize/2,
-                                collect(yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner).+cellsize/2)
+        tgrid = (((xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize))'  .* ones(nrows)) .+ cellsize/2),
+                    ((ones(ncols)' .* (yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner)) .+ cellsize/2)
 
     end
 
@@ -213,8 +214,8 @@ function read_griddata_window(fname::String,limits,
     xllcorner = gt[1] # also xulcorner
     cellsize  = gt[2]
     nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
-    ncols     = ArchGDAL.width(dataset)
-    nrows     = ArchGDAL.height(dataset)
+    ncols     = Int(ArchGDAL.width(dataset))
+    nrows     = Int(ArchGDAL.height(dataset))
     yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
 
     xurcorner = xllcorner+(cellsize*ncols)
@@ -237,8 +238,8 @@ function read_griddata_window(fname::String,limits,
         dimsy = gt[4]:-cellsize:limits[4]
 
         # size of window in cells
-        xoffset = size(dimsx)[1]-1
-        yoffset = size(dimsy)[1]-1
+        xoffset = Int(size(dimsx)[1]-1)
+        yoffset = Int(size(dimsy)[1]-1)
 
         # correct for negative offset (although should be negated by the above check bounds step)
         if xoffset < 0; xoffset = 0; end
@@ -253,17 +254,17 @@ function read_griddata_window(fname::String,limits,
         ymax = (ymin:cellsize:limits[4])[end]
         if ymax - limits[4] !== 0.0; ymax += cellsize; end
 
-        xsize = (xmax - xmin)/cellsize
-        ysize = (ymax - ymin)/cellsize
+        xsize = Int((xmax - xmin)/cellsize)
+        ysize = Int((ymax - ymin)/cellsize)
 
         # check bounds aren't west or north of data
         if xsize > ncols; xsize = ncols; end
         if ysize > nrows; ysize = nrows; end
 
-        indat = Float64.(transpose(ArchGDAL.read(dataset, 1, Int(xoffset), Int(yoffset), Int(xsize), Int(ysize))))
+        indat = Float64.(transpose(ArchGDAL.read(dataset, 1, xoffset, yoffset, xsize, ysize)))
 
-        tgrid = Matlab.meshgrid(collect(xmin:cellsize:xmax-cellsize) .+ cellsize/2,
-                                collect(ymin:cellsize:ymax-cellsize) .+ cellsize/2)
+        tgrid  = ((xmin:cellsize:xmax-cellsize)'  .* ones(ysize)) .+ cellsize/2,
+                    (ones(xsize)' .* (ymin:cellsize:ymax-cellsize)) .+ cellsize/2;
 
         replace!(indat, nodatval=>NaN)
 
@@ -286,7 +287,7 @@ function read_griddata_window(fname::String,limits,
         end
 
     else
-        error("Requested window out of bounds of dataset")
+        error("SpatialFileIO bounds error: Requested window outside bounds of dataset")
     end
 
 end
