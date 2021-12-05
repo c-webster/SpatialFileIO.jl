@@ -283,7 +283,7 @@ function read_griddata_window(fname::String,limits,
             return dat_x, dat_y, dat_z, cellsize
 
         else
-            return tgrid[1], tgrid[2], dat, cellsize
+            return tgrid[1], tgrid[2], indat, cellsize
         end
 
     else
