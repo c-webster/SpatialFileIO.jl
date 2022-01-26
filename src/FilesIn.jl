@@ -83,7 +83,7 @@ Will also take a file with .txt extention if it is in the same format as an .asc
 Returns x,y,z and cellsize data for grid either as 1D or 2D arrays.
 x,y values are the centre of the grid cell
 
-`read_griddata(fname,delete_rows,vectorize)`
+`read_griddata(fname,vectorize,delete_rows)`
 
 # Arguments
 - fname::String : full filepath and name of file to be read
