@@ -158,6 +158,10 @@ Reads header/meta information for gridded spatial data
 `ncols, nrows, xllcorner, yllcorner, cellsize, nodatval = read_griddata_header(fname::String)`
 
 If fname is .asc or .txt format, function assumes coordinates are of lower left corner of extent
+
+Notes:
+ - care should be taken if using datasets with cellsize precision greater than 2 d.p.
+
 """
 function read_griddata_header(fname::String)
 
@@ -177,7 +181,7 @@ function read_griddata_header(fname::String)
 
         gt = ArchGDAL.getgeotransform(dataset)
         xllcorner = gt[1] # also xulcorner
-        cellsize  = gt[2]
+        cellsize  = round(gt[2],digits=2)
         nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
         ncols     = ArchGDAL.width(dataset)
         nrows     = ArchGDAL.height(dataset)
@@ -200,7 +204,10 @@ Imports data window from geotiff
 if vectorize=true, values are returned as 1-D arrays
 if delete_rows=true, all NaN values are deleted
 
-Note, if vectorize=false, delete_rows cannot be reached.
+Notes:
+ - if vectorize=false, delete_rows cannot be reached (data stays in 2D).
+ - care should be taken if using datasets with cellsize precision greater than 2 d.p.
+
 
 limits should be matrix of [xmin xmax ymin ymax]
 
@@ -212,7 +219,7 @@ function read_griddata_window(fname::String,limits,
 
     gt = ArchGDAL.getgeotransform(dataset)
     xllcorner = gt[1] # also xulcorner
-    cellsize  = gt[2]
+    cellsize  = round(gt[2],digits=2)
     nodatval  = ArchGDAL.getnodatavalue(ArchGDAL.getband(dataset,1))
     ncols     = Int(ArchGDAL.width(dataset))
     nrows     = Int(ArchGDAL.height(dataset))
