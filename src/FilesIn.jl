@@ -83,7 +83,7 @@ Will also take a file with .txt extention if it is in the same format as an .asc
 Returns x,y,z and cellsize data for grid either as 1D or 2D arrays.
 x,y values are the centre of the grid cell
 
-`read_griddata(fname,vectorize,delete_rows)`
+`read_griddata(fname,vectorize,delete_rows,remove_zeros)`
 
 # Arguments
 - fname::String : full filepath and name of file to be read
@@ -92,8 +92,12 @@ x,y values are the centre of the grid cell
 - delete_rows::Bool : to delete rows with NaN values - requires data to be vectorized.
     default=true
     if false, function does not return cellsize.
+- remove_zeros::Bool : removes all null values in data (useful for normalised data)
+    default=false
+
 """
-function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool)
+function read_griddata(fname::String,vectorize=true::Bool,
+                        delete_rows=true::Bool,remove_zeros=false::Bool)
 
     if extension(fname) == ".asc" || extension(fname) == ".txt"
         f = open(fname)
@@ -128,6 +132,10 @@ function read_griddata(fname::String,vectorize=true::Bool,delete_rows=true::Bool
                     ((ones(ncols)' .* (yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner)) .+ cellsize/2)
 
     end
+
+    if remove_zeros
+		replace!(dat,0=>NaN)
+	end
 
     replace!(dat, nodatval=>NaN)
 
@@ -198,22 +206,27 @@ end
 Imports data window from geotiff
 
 # Usage
-`dat_x, dat_y, dat_z = read_griddata_window(fname::String,limits::Array{Float64,1},
-                                vectorize=true::Bool,delete_rows=true::Bool))`
+`dat_x, dat_y, dat_z = read_griddata_window(fname::String,limits,vectorize=true::Bool,
+                                                delete_rows=true::Bool,remove_zeros=false::Bool)`
 
-if vectorize=true, values are returned as 1-D arrays
-if delete_rows=true, all NaN values are deleted
+# Arguments
+- fname::String : full filepath and name of file to be read
+- limits::Array : Array of [xmin xmax ymin ymax] describing boundary of window to load
+- vectorize::Bool : true=return x,y,z data as three single column vectors; false=return x,y,z data as 2D matrices
+    default=true
+- delete_rows::Bool : to delete rows with NaN values - requires data to be vectorized.
+    default=true
+    if false, function does not return cellsize.
+- remove_zeros::Bool : removes all null values in data (useful for normalised data)
+    default=false
 
 Notes:
  - if vectorize=false, delete_rows cannot be reached (data stays in 2D).
  - care should be taken if using datasets with cellsize precision greater than 2 d.p.
 
-
-limits should be matrix of [xmin xmax ymin ymax]
-
 """
-function read_griddata_window(fname::String,limits,
-                                vectorize=true::Bool,delete_rows=true::Bool)
+function read_griddata_window(fname::String,limits,vectorize=true::Bool,
+                                delete_rows=true::Bool,remove_zeros=false::Bool)
 
     dataset = ArchGDAL.read(fname)
 
@@ -272,6 +285,10 @@ function read_griddata_window(fname::String,limits,
 
         tgrid  = ((xmin:cellsize:xmax-cellsize)'  .* ones(ysize)) .+ cellsize/2,
                     (ones(xsize)' .* (ymin:cellsize:ymax-cellsize)) .+ cellsize/2;
+
+        if remove_zeros
+    		replace!(indat,0=>NaN)
+    	end
 
         replace!(indat, nodatval=>NaN)
 
