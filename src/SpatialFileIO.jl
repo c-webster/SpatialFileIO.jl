@@ -1,6 +1,6 @@
 module SpatialFileIO
 
-using LasIO, LazIO, DelimitedFiles, ArchGDAL
+using LasIO, LazIO, DelimitedFiles, ArchGDAL, DataFrames
 
 include("FilesIn.jl")
 include("FilesOut.jl")
@@ -8,7 +8,6 @@ include("FilesOut.jl")
 export
     extension,
     readlas,
-    importdtm,
     read_griddata,
     read_griddata_header,
     read_griddata_window,
