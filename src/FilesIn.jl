@@ -1,80 +1,55 @@
 extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
 
-function readlas(infile::String)
 
-    if extension(infile) == ".laz"
-        header, dsmdat = LazIO.load(infile)
-    elseif extension(infile) == ".las"
-        header, dsmdat = FileIO.load(infile)
-    else
-        error("Unknown DSM file extension")
-    end
+"""
+Imports data window from las or laz file
 
-        dsm_x = fill(NaN,size(dsmdat))
-        dsm_y = fill(NaN,size(dsmdat))
-        dsm_z = fill(NaN,size(dsmdat))
-        dsm_c = fill(NaN,size(dsmdat))
+# Usage
+`dat_x, dat_y, dat_z = readlas(fname::String,limits::Any=nothing))`
 
-        for dx in eachindex(dsmdat)
-            dsm_c[dx] = trunc(Int,float(classification(dsmdat[dx])))
-            if dsm_c[dx] == 2
-                continue
-            else
-                dsm_x[dx] = xcoord(dsmdat[dx],header)
-                dsm_y[dx] = ycoord(dsmdat[dx],header)
-                dsm_z[dx] = zcoord(dsmdat[dx],header)
-            end
-        end
+# Arguments
+- fname::String : full filepath and name of file to be read
+- limits::Matrix : Matrix of [xmin xmax ymin ymax] describing boundary of window to load
 
-        rows = findall(isnan,dsm_x)
-        deleteat!(dsm_x,rows)
-        deleteat!(dsm_y,rows)
-        deleteat!(dsm_z,rows)
+Notes:
+ - currently only loads lidar points classed as 3, 4 or 5 (vegetation classes)
 
-        return dsm_x, dsm_y, dsm_z
+"""
+function readlas(fname::String,limits::Any=nothing)
 
-end
+	if extension(fname) == ".laz"
+		header, lasdat = LazIO.load(fname)
+	elseif extension(fname) == ".las"
+		header, lasdat = FileIO.load(fname)
+	else
+		error("Unknown las file extension")
+	end
 
+	if limits == nothing
+		limits = [header.x_min,header.x_max,header.y_min,header.y_max]
+	end
 
-function importdtm(dtmf::String,tilt::Bool,limits::Any=nothing)
+	dat = DataFrame(lasdat)
 
-    if tilt
+	las_c = Int.(dat.raw_classification)
 
-        file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
-        dtm_x = dtmdat["x"]
-        dtm_y = dtmdat["y"]
-        dtm_z = dtmdat["z"]
-        dtm_s = dtmdat["s"]
-        dtm_a = dtmdat["a"]
-        dtm_cellsize = dtmdat["cellsize"]
+	dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
+	 		((las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
 
-        return dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize
+	las_x = dat.x[dx] .* header.x_scale .+ header.x_offset
+	las_y = dat.y[dx] .* header.y_scale .+ header.y_offset
+	las_z = dat.z[dx] .* header.z_scale .+ header.z_offset
 
-    else
+	rows = findall(isnan,las_x)
+	deleteat!(las_x,rows)
+	deleteat!(las_y,rows)
+	deleteat!(las_z,rows)
 
-        if extension(dtmf) == ".mat"
-
-            file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
-            dtm_x = vec(dtmdat["x"])
-            dtm_y = vec(dtmdat["y"])
-            dtm_z = vec(dtmdat["z"])
-            dtm_cellsize = dtmdat["cellsize"]
-            rows = findall(isnan,dtm_z)
-            deleteat!(dtm_x,rows)
-            deleteat!(dtm_y,rows)
-            deleteat!(dtm_z,rows)
-
-        elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt" ||  extension(dtmf) == ".tif"
-
-                dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata(dtmf,true,true)
-
-        end
-
-    return dtm_x, dtm_y, dtm_z, dtm_cellsize
-
-    end
+	return las_x, las_y, las_z
 
 end
+
 
 """
 Read gridded spatial data in .tif or .asc format.
