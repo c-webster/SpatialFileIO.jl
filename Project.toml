@@ -12,6 +12,7 @@ LazIO = "c3605908-9f0f-11e8-0a72-0d361c15a277"
 
 [compat]
 ArchGDAL = "0.7.2"
+DataFrames = "1"
 LasIO = "0.3.7"
 LazIO = "0.3.3"
 julia = "1"
