@@ -11,6 +11,7 @@ LasIO = "570499db-eae3-5eb6-bdd5-a5326f375e68"
 LazIO = "c3605908-9f0f-11e8-0a72-0d361c15a277"
 
 [compat]
+LazIO = "0.3"
 julia = "1"
 
 [extras]
