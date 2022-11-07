@@ -117,7 +117,7 @@ function read_griddata(fname::String,vectorize=true::Bool,
     if vectorize
         dat_x = vec(tgrid[1]);
         dat_y = vec(tgrid[2]);
-        dat_z = vec(reverse(dat,dims=1))
+        dat_z = vec(reverse(dat,dims=1)) # reversed because the y-axis is inverted
 
         if delete_rows
             rows = findall(isnan,dat_z)
