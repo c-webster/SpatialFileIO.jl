@@ -253,8 +253,14 @@ function read_griddata_window(fname::String,limits,vectorize=true::Bool,
         ysize = Int((ymax - ymin)/cellsize)
 
         # check bounds aren't west or north of data
-        if xsize > ncols; xsize = ncols; end
-        if ysize > nrows; ysize = nrows; end
+        if xsize > (ncols-xoffset)
+            xsize = ncols-xoffset
+            xmax  = xurcorner
+        end
+        if ysize > (nrows-yoffset)
+            ysize = nrows-yoffset
+            ymax  = yurcorner
+        end
 
         indat = Float64.(transpose(ArchGDAL.read(dataset, 1, xoffset, yoffset, xsize, ysize)))
 
