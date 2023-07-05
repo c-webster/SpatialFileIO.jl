@@ -15,7 +15,7 @@ Notes:
  - currently only loads lidar points classed as 3, 4 or 5 (vegetation classes)
 
 """
-function readlas(fname::String,limits::Any=nothing)
+function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false)
 
 	if extension(fname) == ".laz"
 		header, lasdat = LazIO.load(fname)
@@ -33,9 +33,15 @@ function readlas(fname::String,limits::Any=nothing)
 
 	las_c = Int.(dat.raw_classification)
 
-	dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+    if keep_ground
+        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
+	 		((las_c .== 2) .| (las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
+    else
+        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
 			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
 	 		((las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
+    end
 
 	las_x = dat.x[dx] .* header.x_scale .+ header.x_offset
 	las_y = dat.y[dx] .* header.y_scale .+ header.y_offset
