@@ -15,7 +15,7 @@ Notes:
  - currently only loads lidar points classed as 3, 4 or 5 (vegetation classes)
 
 """
-function readlas(fname::String,limits::Any=nothing)
+function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false)
 
 	if extension(fname) == ".laz"
 		header, lasdat = LazIO.load(fname)
@@ -33,9 +33,15 @@ function readlas(fname::String,limits::Any=nothing)
 
 	las_c = Int.(dat.raw_classification)
 
-	dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+    if keep_ground
+        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
+	 		((las_c .== 2) .| (las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
+    else
+        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
 			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
 	 		((las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
+    end
 
 	las_x = dat.x[dx] .* header.x_scale .+ header.x_offset
 	las_y = dat.y[dx] .* header.y_scale .+ header.y_offset
@@ -121,7 +127,7 @@ function read_griddata(fname::String,vectorize=true::Bool,
     if vectorize
         dat_x = vec(tgrid[1]);
         dat_y = vec(tgrid[2]);
-        dat_z = vec(reverse(dat,dims=1))
+        dat_z = vec(reverse(dat,dims=1)) # reversed because the y-axis is inverted
 
         if delete_rows
             rows = findall(isnan,dat_z)
@@ -256,8 +262,14 @@ function read_griddata_window(fname::String,limits,vectorize=true::Bool,
         ysize = Int((ymax - ymin)/cellsize)
 
         # check bounds aren't west or north of data
-        if xsize > ncols; xsize = ncols; end
-        if ysize > nrows; ysize = nrows; end
+        if xsize > (ncols-xoffset)
+            xsize = ncols-xoffset
+            xmax  = xurcorner
+        end
+        if ysize > (nrows-yoffset)
+            ysize = nrows-yoffset
+            ymax  = yurcorner
+        end
 
         indat = Float64.(transpose(ArchGDAL.read(dataset, 1, xoffset, yoffset, xsize, ysize)))
 
