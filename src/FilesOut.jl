@@ -1,3 +1,9 @@
+"""
+Writes an ascii file
+
+header: [ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value]
+"""
+
 function write_ascii(headers,fname::String,data,reshape::Bool)
 
     data[isnan.(data)] .= Int.(headers[6])

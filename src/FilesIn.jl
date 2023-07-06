@@ -89,7 +89,7 @@ function read_griddata(fname::String,vectorize=true::Bool,
         tgrid = (((xllcorner:cellsize:(xllcorner+cellsize*(ncols-1)))' .* ones(nrows)) .+ cellsize/2),
                         ((ones(ncols)' .* (yllcorner:cellsize:(yllcorner+cellsize*(nrows-1)))) .+ cellsize/2)
 
-    elseif extension(fname) == ".tif"
+    elseif extension(fname) == ".tif" || extension(fname) == ".TIFF"
 
         dataset = ArchGDAL.read(fname)
 
@@ -105,6 +105,10 @@ function read_griddata(fname::String,vectorize=true::Bool,
 
         tgrid = (((xulcorner:cellsize:xulcorner+(cellsize*ncols-cellsize))'  .* ones(nrows)) .+ cellsize/2),
                     ((ones(ncols)' .* (yulcorner-(cellsize*nrows-cellsize):cellsize:yulcorner)) .+ cellsize/2)
+
+    else
+
+        error("File extension not recognised")
 
     end
 
@@ -191,8 +195,7 @@ Imports data window from geotiff
     default=true
 - delete_rows::Bool : to delete rows with NaN values - requires data to be vectorized.
     default=true
-    if false, function does not return cellsize.
-- remove_zeros::Bool : removes all null values in data (useful for normalised data)
+- remove_zeros::Bool : removes all zero values in data and replaces with nan (useful for normalised data)
     default=false
 
 Notes:
