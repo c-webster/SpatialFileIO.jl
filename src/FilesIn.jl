@@ -2,20 +2,23 @@ extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
 
 
 """
-Imports data window from las or laz file
+Imports data from las or laz file with option to limit import area
 
 # Usage
-`dat_x, dat_y, dat_z = readlas(fname::String,limits::Any=nothing))`
+`dat_x, dat_y, dat_z = readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false,keep_all::=false)`
 
 # Arguments
 - fname::String : full filepath and name of file to be read
 - limits::Matrix : Matrix of [xmin xmax ymin ymax] describing boundary of window to load
+- keep_ground = true; loads all points classified 2-5
+- keep_all    = true; loads all points, regardless of classification
 
 Notes:
- - currently only loads lidar points classed as 3, 4 or 5 (vegetation classes)
+- keep_ground and keep_all cannot both be true. if both are true, keep_ground takes precedent. 
+- if keep_ground and keep_all are both false, function loads only canopy points i.e. points classed as 3, 4 or 5 (vegetation classes)
 
 """
-function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false)
+function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false,keep_all::Bool=false)
 
 	if extension(fname) == ".laz"
 		header, lasdat = LazIO.load(fname)
@@ -37,6 +40,9 @@ function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false)
         dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
 			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
 	 		((las_c .== 2) .| (las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
+    elseif keep_all
+        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+            (limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4]))
     else
         dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
 			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
