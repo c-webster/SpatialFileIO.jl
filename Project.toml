@@ -1,17 +1,17 @@
 name = "SpatialFileIO"
 uuid = "ab380219-86f4-46ea-9ab2-f0efd05bc343"
-authors = ["Clare <clare.s.webster@gmail.com> and contributors"]
-version = "0.7.0"
+version = "0.8.0"
+authors = ["Clare Webster <clare.s.webster@gmail.com> and contributors"]
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-LasIO = "570499db-eae3-5eb6-bdd5-a5326f375e68"
-LazIO = "c3605908-9f0f-11e8-0a72-0d361c15a277"
+PointClouds = "3cc211ed-1f43-4d33-a894-629186066e97"
 
 [compat]
-julia = "1.10"
+PointClouds = "1.1.2"
+julia = "1.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

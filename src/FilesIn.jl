@@ -1,8 +1,6 @@
-extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
-
 
 """
-Imports data from las or laz file with option to limit import area
+Imports data from las or laz file with option to limit returned data by area or classification
 
 # Usage
 `dat_x, dat_y, dat_z = readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false,keep_all::=false)`
@@ -20,45 +18,28 @@ Notes:
 """
 function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false,keep_all::Bool=false)
 
-	if extension(fname) == ".laz"
-		header, lasdat = LazIO.load(fname)
-	elseif extension(fname) == ".las"
-		header, lasdat = FileIO.load(fname)
-	else
-		error("Unknown las file extension")
-	end
-
-	if limits == nothing
-		limits = [header.x_min,header.x_max,header.y_min,header.y_max]
-	end
-
-	dat = DataFrame(lasdat)
-
-	las_c = Int.(dat.raw_classification)
+    pc = getfield(PointCloud(fname; attributes = (classification)), :data)
 
     if keep_ground
-        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
-			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
-	 		((las_c .== 2) .| (las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
+        pointmask = ((pc.classification .== 2) .| (pc.classification .== 3) .| 
+                    (pc.classification .== 4) .| (pc.classification .== 5))
     elseif keep_all
-        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
-            (limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4]))
+        pointmask = Bool.(ones(size(pc.classification)))
     else
-        dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
-			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
-	 		((las_c .== 3) .| (las_c .== 4) .| (las_c .== 5))
+        pointmask = ((pc.classification .== 3) .| (pc.classification .== 4) .| 
+                    (pc.classification .== 5))
     end
 
-	las_x = dat.x[dx] .* header.x_scale .+ header.x_offset
-	las_y = dat.y[dx] .* header.y_scale .+ header.y_offset
-	las_z = dat.z[dx] .* header.z_scale .+ header.z_offset
+    if limits == nothing
+        coordmask = Bool.(ones(size(pc.classification)))
+    else
+        coordmask = (pc.x .>= limits[1]) .& (pc.x .<= limits[2]) .&
+                (pc.y .>= limits[3]) .& (pc.y .<= limits[4])
+    end
 
-	rows = findall(isnan,las_x)
-	deleteat!(las_x,rows)
-	deleteat!(las_y,rows)
-	deleteat!(las_z,rows)
+    keepat!(pc, pointmask.*coordmask)
 
-	return las_x, las_y, las_z
+	return pc.x, pc.y, pc.z
 
 end
 
@@ -86,7 +67,7 @@ x,y values are the centre of the grid cell
 function read_griddata(fname::String,vectorize=true::Bool,
                         delete_rows=true::Bool,remove_zeros=false::Bool)
 
-    if extension(fname) == ".asc" || extension(fname) == ".txt"
+    if splitext(fname)[2] == ".asc" || splitext(fname)[2] == ".txt"
         f = open(fname)
             ncols     = parse(Int64,split(readline(f))[2])
             nrows     = parse(Int64,split(readline(f))[2])
@@ -101,7 +82,7 @@ function read_griddata(fname::String,vectorize=true::Bool,
         tgrid = (((xllcorner:cellsize:(xllcorner+cellsize*(ncols-1)))' .* ones(nrows)) .+ cellsize/2),
                         ((ones(ncols)' .* (yllcorner:cellsize:(yllcorner+cellsize*(nrows-1)))) .+ cellsize/2)
 
-    elseif extension(fname) == ".tif" || extension(fname) == ".TIFF"
+    elseif splitext(fname)[2] == ".tif" || splitext(fname)[2] == ".TIFF"
 
         dataset = ArchGDAL.read(fname)
 
@@ -164,7 +145,7 @@ Notes:
 """
 function read_griddata_header(fname::String)
 
-    if extension(fname) == ".asc" || extension(fname) == ".txt"
+    if splitext(fname)[2] == ".asc" || splitext(fname)[2] == ".txt"
         f = open(fname)
             ncols     = parse(Int64,split(readline(f))[2])
             nrows     = parse(Int64,split(readline(f))[2])
@@ -174,7 +155,7 @@ function read_griddata_header(fname::String)
             nodatval  = parse(Float64,split(readline(f))[2])
         close(f)
 
-    elseif extension(fname) == ".tif"
+    elseif splitext(fname)[2] == ".tif"
 
         dataset = ArchGDAL.read(fname)
 

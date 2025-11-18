@@ -1,12 +1,11 @@
 module SpatialFileIO
 
-using LasIO, LazIO, DelimitedFiles, ArchGDAL, DataFrames
+using DelimitedFiles, ArchGDAL, DataFrames, PointClouds
 
 include("FilesIn.jl")
 include("FilesOut.jl")
 
 export
-    extension,
     readlas,
     read_griddata,
     read_griddata_header,
