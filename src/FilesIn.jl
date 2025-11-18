@@ -194,6 +194,7 @@ Imports data window from geotiff
 Notes:
  - if vectorize=false, delete_rows cannot be reached (data stays in 2D).
  - care should be taken if using datasets with cellsize precision greater than 2 d.p.
+ - if the desired window falls on the edge of the dataset, the function will issue a warning 
 
 """
 function read_griddata_window(fname::String,limits,vectorize=true::Bool,
@@ -208,87 +209,90 @@ function read_griddata_window(fname::String,limits,vectorize=true::Bool,
     ncols     = Int(ArchGDAL.width(dataset))
     nrows     = Int(ArchGDAL.height(dataset))
     yllcorner = gt[4]-(cellsize*nrows) # gt[4] = yulcorner
-
     xurcorner = xllcorner+(cellsize*ncols)
     yurcorner = gt[4]
 
-    if ((xllcorner .< limits[1] .< xurcorner) || (xllcorner .< limits[2] .< xurcorner)) &&
-            ((yllcorner .< limits[3] .< yurcorner) || (yllcorner .< limits[4] .< yurcorner))
+    # check that at least one corner of the requested limits is within the dataset bounds
+    corners = [
+        (limits[1], limits[3]),  # bottom-left
+        (limits[2], limits[3]),  # bottom-right
+        (limits[1], limits[4]),  # top-left
+        (limits[2], limits[4])   # top-right
+    ]
 
-        # check bounds aren't east or south of data
-        if limits[1] .< xllcorner
-            limits[1] = xllcorner
-        end
-
-        if limits[3] .< yllcorner
-            limits[3] = yllcorner
-        end
-
-        # cell boundaries
-        dimsx = xllcorner:cellsize:limits[1]
-        dimsy = gt[4]:-cellsize:limits[4]
-
-        # size of window in cells
-        xoffset = Int(size(dimsx)[1]-1)
-        yoffset = Int(size(dimsy)[1]-1)
-
-        # correct for negative offset (although should be negated by the above check bounds step)
-        if xoffset < 0; xoffset = 0; end
-        if yoffset < 0; yoffset = 0; end
-
-        # get size of window in cells
-        xmin  = dimsx[end]
-        xmax  = (xmin:cellsize:limits[2])[end]
-        if xmax - limits[2] !== 0.0; xmax += cellsize; end
-
-        ymin = (yllcorner:cellsize:limits[3])[end]
-        ymax = (ymin:cellsize:limits[4])[end]
-        if ymax - limits[4] !== 0.0; ymax += cellsize; end
-
-        xsize = Int((xmax - xmin)/cellsize)
-        ysize = Int((ymax - ymin)/cellsize)
-
-        # check bounds aren't west or north of data
-        if xsize > (ncols-xoffset)
-            xsize = ncols-xoffset
-            xmax  = xurcorner
-        end
-        if ysize > (nrows-yoffset)
-            ysize = nrows-yoffset
-            ymax  = yurcorner
-        end
-
-        indat = Float64.(transpose(ArchGDAL.read(dataset, 1, xoffset, yoffset, xsize, ysize)))
-
-        tgrid  = ((xmin:cellsize:xmax-cellsize)'  .* ones(ysize)) .+ cellsize/2,
-                    (ones(xsize)' .* (ymin:cellsize:ymax-cellsize)) .+ cellsize/2;
-
-        if remove_zeros
-    		replace!(indat,0=>NaN)
-    	end
-
-        replace!(indat, nodatval=>NaN)
-
-        if vectorize
-            dat_x = vec(tgrid[1]);
-            dat_y = vec(tgrid[2]);
-            dat_z = vec(reverse(indat,dims=1))
-
-            if delete_rows
-                rows = findall(isnan,dat_z)
-                deleteat!(dat_x,rows)
-                deleteat!(dat_y,rows)
-                deleteat!(dat_z,rows)
-            end
-
-            return dat_x, dat_y, dat_z, cellsize
-
-        else
-            return tgrid[1], tgrid[2], indat, cellsize
-        end
-
-    else
-        error("SpatialFileIO bounds error: Requested window outside bounds of dataset")
+    within_bounds = any(corners) do (x, y)
+        xllcorner <= x <= xurcorner && yllcorner <= y <= yurcorner
     end
 
+    if !within_bounds
+        error("SpatialFileIO bounds error: Requested window completely outside bounds of dataset")
+    end
+
+    if (!(xllcorner .< limits[1] .< xurcorner) || !(xllcorner .< limits[2] .< xurcorner)) ||
+            (!(yllcorner .< limits[3] .< yurcorner) || !(yllcorner .< limits[4] .< yurcorner))
+
+        @warn("Warning: Specified limits extend beyond data bounds. Data will be loaded to available extent.")
+
+        # check individual bounds aren't east or south of data
+        (limits[1] .< xllcorner) && (limits[1] = xllcorner)
+        (limits[2] .> xurcorner) && (limits[2] = xurcorner)
+        (limits[3] .< yllcorner) && (limits[3] = yllcorner)
+        (limits[4] .> yurcorner) && (limits[4] = yurcorner)
+
+    end
+
+    # cell boundaries
+    dimsx = xllcorner:cellsize:limits[1]
+    dimsy = yurcorner:-cellsize:limits[4]
+
+    # offset of window from upper left corner
+    xoffset = Int(size(dimsx)[1]-1)
+    yoffset = Int(size(dimsy)[1]-1)
+
+    # correct for negative offset (although should be negated by the above check bounds step)
+    if xoffset < 0; xoffset = 0; end
+    if yoffset < 0; yoffset = 0; end
+
+    # get size of window in cells
+    xmin  = dimsx[end]
+    xmax  = (xmin:cellsize:limits[2])[end]
+    if xmax - limits[2] !== 0.0; xmax += cellsize; end
+
+    ymin = (yllcorner:cellsize:limits[3])[end]
+    ymax = (ymin:cellsize:limits[4])[end]
+    if ymax - limits[4] !== 0.0; ymax += cellsize; end
+
+    # get size of window in cells
+    xsize = Int((xmax - xmin)/cellsize)
+    ysize = Int((ymax - ymin)/cellsize)
+
+    indat = Float64.(transpose(ArchGDAL.read(dataset, 1, xoffset, yoffset, xsize, ysize)))
+
+    tgrid  = ((xmin:cellsize:xmax-cellsize)'  .* ones(ysize)) .+ cellsize/2,
+                (ones(xsize)' .* (ymin:cellsize:ymax-cellsize)) .+ cellsize/2;
+
+    if remove_zeros
+        replace!(indat,0=>NaN)
+    end
+
+    replace!(indat, nodatval=>NaN)
+
+    if vectorize
+        dat_x = vec(tgrid[1]);
+        dat_y = vec(tgrid[2]);
+        dat_z = vec(reverse(indat,dims=1))
+
+        if delete_rows
+            rows = findall(isnan,dat_z)
+            deleteat!(dat_x,rows)
+            deleteat!(dat_y,rows)
+            deleteat!(dat_z,rows)
+        end
+
+        return dat_x, dat_y, dat_z, cellsize
+
+    else
+        return tgrid[1], tgrid[2], indat, cellsize
+    end
+    
 end

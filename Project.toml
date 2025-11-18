@@ -1,6 +1,6 @@
 name = "SpatialFileIO"
 uuid = "ab380219-86f4-46ea-9ab2-f0efd05bc343"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Clare Webster <clare.s.webster@gmail.com> and contributors"]
 
 [deps]
