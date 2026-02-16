@@ -228,22 +228,27 @@ function read_griddata_window(fname::String,limits,vectorize=true::Bool,
         error("SpatialFileIO bounds error: Requested window completely outside bounds of dataset")
     end
 
-    if (!(xllcorner .< limits[1] .< xurcorner) || !(xllcorner .< limits[2] .< xurcorner)) ||
-            (!(yllcorner .< limits[3] .< yurcorner) || !(yllcorner .< limits[4] .< yurcorner))
+    # define the limits to load, correcting for any that fall outside the dataset bounds
+    if (!(xllcorner .<= limits[1] .<= xurcorner) || !(xllcorner .<= limits[2] .<= xurcorner)) ||
+            (!(yllcorner .<= limits[3] .<= yurcorner) || !(yllcorner .<= limits[4] .<= yurcorner))
 
         @warn("Warning: Specified limits extend beyond data bounds. Data will be loaded to available extent.")
 
-        # check individual bounds aren't east or south of data
-        (limits[1] .< xllcorner) && (limits[1] = xllcorner)
-        (limits[2] .> xurcorner) && (limits[2] = xurcorner)
-        (limits[3] .< yllcorner) && (limits[3] = yllcorner)
-        (limits[4] .> yurcorner) && (limits[4] = yurcorner)
+        load_limits = limits
 
+        # check individual bounds aren't east or south of data
+        (limits[1] .< xllcorner) && (load_limits[1] = xllcorner)
+        (limits[2] .> xurcorner) && (load_limits[2] = xurcorner)
+        (limits[3] .< yllcorner) && (load_limits[3] = yllcorner)
+        (limits[4] .> yurcorner) && (load_limits[4] = yurcorner)
+
+    else
+        load_limits = limits
     end
 
     # cell boundaries
-    dimsx = xllcorner:cellsize:limits[1]
-    dimsy = yurcorner:-cellsize:limits[4]
+    dimsx = xllcorner:cellsize:load_limits[1]
+    dimsy = yurcorner:-cellsize:load_limits[4]
 
     # offset of window from upper left corner
     xoffset = Int(size(dimsx)[1]-1)
@@ -255,12 +260,12 @@ function read_griddata_window(fname::String,limits,vectorize=true::Bool,
 
     # get size of window in cells
     xmin  = dimsx[end]
-    xmax  = (xmin:cellsize:limits[2])[end]
-    if xmax - limits[2] !== 0.0; xmax += cellsize; end
+    xmax  = (xmin:cellsize:load_limits[2])[end]
+    if xmax - load_limits[2] !== 0.0; xmax += cellsize; end
 
-    ymin = (yllcorner:cellsize:limits[3])[end]
-    ymax = (ymin:cellsize:limits[4])[end]
-    if ymax - limits[4] !== 0.0; ymax += cellsize; end
+    ymin = (yllcorner:cellsize:load_limits[3])[end]
+    ymax = (ymin:cellsize:load_limits[4])[end]
+    if ymax - load_limits[4] !== 0.0; ymax += cellsize; end
 
     # get size of window in cells
     xsize = Int((xmax - xmin)/cellsize)
