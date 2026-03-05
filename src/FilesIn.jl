@@ -18,9 +18,7 @@ Notes:
 """
 function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false,keep_all::Bool=false)
 
-    try
-        pc = getfield(PointCloud(fname; attributes = (classification)), :data)
-    catch
+    if Sys.islinux()
         las = LAS(fname)
         coords = coordinates(las)     
         cls    = classification(las) 
@@ -30,6 +28,8 @@ function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false,keep_
             z = getindex.(coords, 3),
             classification = cls,
         )
+    else
+        pc = getfield(PointCloud(fname; attributes = (classification)), :data)
     end
 
     if keep_ground
