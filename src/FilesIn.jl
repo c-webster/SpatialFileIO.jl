@@ -18,7 +18,19 @@ Notes:
 """
 function readlas(fname::String,limits::Any=nothing,keep_ground::Bool=false,keep_all::Bool=false)
 
-    pc = getfield(PointCloud(fname; attributes = (classification)), :data)
+    try
+        pc = getfield(PointCloud(fname; attributes = (classification)), :data)
+    catch
+        las = LAS(fname)
+        coords = coordinates(las)     
+        cls    = classification(las) 
+        pc = DataFrame(
+            x = getindex.(coords, 1),
+            y = getindex.(coords, 2),
+            z = getindex.(coords, 3),
+            classification = cls,
+        )
+    end
 
     if keep_ground
         pointmask = ((pc.classification .== 2) .| (pc.classification .== 3) .| 
